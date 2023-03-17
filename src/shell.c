@@ -1,12 +1,11 @@
-#include "shell.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "cmd.h"
-#include "utils.h"
+#include "headers/cmd.h"
+#include "headers/shell.h"
+#include "headers/utils.h"
 
 static int resize_cmd_len(const int cur_num, const int cur_len, const Cmd *cmd,
                           int max_cmd_len) {

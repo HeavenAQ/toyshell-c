@@ -1,6 +1,6 @@
-#include "cmd.h"
+#include "headers/cmd.h"
 
-#include "utils.h"
+#include "headers/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

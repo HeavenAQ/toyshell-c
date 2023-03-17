@@ -5,8 +5,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cmd.h"
-#include "shell.h"
+#include "headers/cmd.h"
+#include "headers/shell.h"
 
 void shell_loop(Shell *sh) {
     while (1) {
