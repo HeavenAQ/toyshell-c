@@ -9,6 +9,7 @@ typedef struct Cmd Cmd;
 struct Cmd {
     char **sets;
     char *redirect;
+    int total;
 };
 
 void init_cmd(Cmd **cmd);

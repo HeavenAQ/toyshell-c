@@ -2,44 +2,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "headers/cmd.h"
 #include "headers/shell.h"
 #include "headers/utils.h"
 
-static int resize_cmd_len(const int cur_num, const int cur_len, const Cmd *cmd,
-                          int max_cmd_len) {
-    char *cur_end = cmd->sets[cur_num] + cur_len;
-    max_cmd_len += CMD_LEN;
-    cmd->sets[cur_num] = realloc(cmd->sets[cur_num], max_cmd_len);
-
-    if (!cmd->sets[cur_num]) {
-        DBG("Failed to realloc");
-        return -1;
+static inline bool is_exit(const char *cmd) { return strcmp(cmd, "exit") == 0; }
+static inline bool is_cd(const char *cmd) { return strcmp(cmd, "cd") == 0; }
+static inline void exec_cmd(char *const *cmd_arr) {
+    is_exit(cmd_arr[0]) ? exit(0) : NULL;
+    if (is_cd(cmd_arr[0])) {
+        chdir(cmd_arr[1]);
     }
-    memset(cur_end, '\0', CMD_LEN);
-    return max_cmd_len;
+    fork() != 0 ? wait(NULL) : execvp(cmd_arr[0], cmd_arr);
 }
 
-static int resize_cmd_set(const int cur_num, Cmd *cmd, int max_cmd_len) {
-    // resize redirect symbol array
-    char *cur_end = cmd->redirect + cur_num;
-    max_cmd_len += CMD_NUM;
-    cmd->redirect = realloc(cmd->redirect, max_cmd_len);
-    if (!cmd->redirect) {
-        DBG("Failed to realloc");
-        return -1;
+static int get_env(char **cmd_arr, int cmd_len) {
+    for (int i = 0; i < cmd_len; ++i) {
+        if (cmd_arr[i][0] == '$') {
+            cmd_arr[i] = getenv(cmd_arr[i] + 1);
+            if (cmd_arr == NULL) {
+                fprintf(stderr, "No such environment variable: %s", cmd_arr[i]);
+                return -1;
+            }
+        }
     }
-    memset(cur_end, '\0', CMD_NUM);
-
-    // resize command set array
-    cmd->sets = realloc(cmd->sets, max_cmd_len * sizeof(char *));
-    if (!cmd->sets) {
-        DBG("Failed to realloc");
-        return -1;
-    }
-    init_str_arr(cmd->sets + cur_num, max_cmd_len, CMD_LEN);
-    return max_cmd_len;
+    return 0;
 }
 
 static void read_cmd(Cmd *cmd) {
@@ -67,12 +56,43 @@ static void read_cmd(Cmd *cmd) {
     }
 
     // trim unwanted prefix and suffix
-    for (int k = 0; k < cur_num; ++k) {
+    cmd->total = strlen(cmd->redirect) + 1;
+    for (int k = 0; k < cmd->total; ++k) {
         cmd->sets[k] = trim(cmd->sets[k]);
     }
 }
 
-static bool is_exit(char *cmd) { return strcmp(cmd, "exit\n") == 0; }
+static void exec_uni_cmd(const Cmd *cmd) {
+    // split the command into an array
+    char *cmd_str = cmd->sets[0];
+    int cmd_frag_num = calc_cmd_frag(cmd_str);
+    char *cmd_arr[cmd_frag_num + 1];
+    split_cmd(cmd_str, cmd_arr);
+
+    // parse environment variables
+    if (get_env(cmd_arr, cmd_frag_num) == -1)
+        return;
+
+    // execute the command
+    exec_cmd(cmd_arr);
+}
+
+static void exec_multi_cmd(const Cmd *cmd) {
+    /*int fd[2];*/
+    /*pipe(fd);*/
+    /*pid_t pid = fork();*/
+    /*if (pid == 0) {*/
+    /*dup2(fd[1], STDOUT_FILENO);*/
+    /*close(fd[0]);*/
+    /*close(fd[1]);*/
+    /*execvp(cmd->sets[0], cmd->sets);*/
+    /*} else {*/
+    /*dup2(fd[0], STDIN_FILENO);*/
+    /*close(fd[0]);*/
+    /*close(fd[1]);*/
+    /*execvp(cmd->sets[1], cmd->sets + 1);*/
+    /*}*/
+}
 
 void init_shell(Shell **self) {
     if (!(*self = (Shell *)malloc(sizeof(Shell)))) {
@@ -80,5 +100,6 @@ void init_shell(Shell **self) {
         return;
     }
     (*self)->read_cmd = read_cmd;
-    (*self)->is_exit = is_exit;
+    (*self)->exec_uni_cmd = exec_uni_cmd;
+    (*self)->exec_multi_cmd = exec_multi_cmd;
 }

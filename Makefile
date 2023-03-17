@@ -14,7 +14,8 @@ SRC_FILES = main.o cmd.o shell.o utils.o
 #====== default recipes ======
 all: main.o cmd.o shell.o utils.o
 	$(CC) $^ $(CFLAGS) -o $(TARGET)
-	@mkdir $(ELF_DIR) && mv *.o $(ELF_DIR)
+	@[ -d $(ELF_DIR) ] || mkdir $(ELF_DIR) 2> /dev/null
+	@mv *.o $(ELF_DIR)
 
 %.o: $(SRC_DIR)/%.c
 	$(CC) $< $(CFLAGS) -o $@ -c 
