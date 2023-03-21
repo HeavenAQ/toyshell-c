@@ -48,6 +48,12 @@ void init_str_arr(char **ptr, const int arr_len, const int str_len) {
     }
 }
 
+void free_str_arr(char **ptr, const int arr_len) {
+    for (int i = 0; i < arr_len; i++)
+        free(ptr[i]);
+    free(ptr);
+}
+
 void split_cmd(char *cmd_str, char **arr) {
     int i = 0;
     char *cmd_frag = strtok(cmd_str, " ");
@@ -61,6 +67,12 @@ void split_cmd(char *cmd_str, char **arr) {
         cmd_frag = strtok(NULL, " ");
         ++i;
     }
+#ifdef DEBUG_SPLIT_CMD
+    FILE *fp = fopen("debug.log", "a");
+    for (int j = 0; j < i; ++j)
+        fprintf(fp, "cmd_arr[%d]: %s\n", j, arr[j]);
+    fclose(fp);
+#endif
 }
 
 int resize_cmd_len(const int cur_num, const int cur_len, const Cmd *cmd,

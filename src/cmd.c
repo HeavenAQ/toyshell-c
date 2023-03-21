@@ -22,4 +22,7 @@ void free_cmd(Cmd **cmd) {
     free((*cmd)->redirect);
     free((*cmd)->sets);
     free(*cmd);
+    (*cmd)->redirect = NULL;
+    (*cmd)->sets = NULL;
+    (*cmd) = NULL;
 }

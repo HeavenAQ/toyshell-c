@@ -1,6 +1,6 @@
 shell := /bin/bash
 CC = gcc
-DEBUG = -g
+DEBUG = -g -DDEBUG_READ_CMD -DDEBUG_SPLIT_CMD
 CFLAGS = -Wall -Wextra -Werror
 TARGET = shell
 SRC_DIR = src

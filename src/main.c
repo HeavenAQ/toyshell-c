@@ -11,31 +11,29 @@
 
 void shell_loop(Shell *sh) {
     while (1) {
-        // get ready to receive command
         Cmd *cmd = NULL;
         init_cmd(&cmd);
 
         sh->read_cmd(cmd);
+        fflush(stdin);
 
 #ifdef DEBUG_READ_CMD
-        printf("redirect: %s\n", cmd->redirect);
+        FILE *fp = fopen("debug.log", "a");
+        fprintf(fp, "total: %d\n", cmd->total);
+        fprintf(fp, "redirect: %s\n", cmd->redirect);
         for (int i = 0; i < cmd->total; ++i)
-            puts(cmd->sets[i]);
+            fprintf(fp, "cmd string: %s", cmd->sets[i]);
+        fclose(fp);
 #endif
-        switch (cmd->total) {
-        case 0:
-            continue;
-            break;
-        case 1:
-            sh->exec_uni_cmd(cmd);
-            break;
-        default:
-            sh->exec_multi_cmd(cmd);
-            break;
-        }
 
-        /*sh->is_exit(sh, cmd->sets) ? exit(0) : NULL;*/
+        if (cmd->total == 1)
+            fork() != 0 ? wait(NULL) : sh->exec_uni_cmd(cmd);
+        else if (cmd->total > 1)
+            fork() != 0 ? wait(NULL) : sh->exec_multi_cmd(cmd);
+
+        // clean up
         free_cmd(&cmd);
+        cmd = NULL;
     }
 }
 

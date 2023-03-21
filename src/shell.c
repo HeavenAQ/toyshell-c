@@ -1,7 +1,10 @@
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fcntl.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "headers/cmd.h"
@@ -15,9 +18,10 @@ static inline void exec_cmd(char *const *cmd_arr) {
     if (is_cd(cmd_arr[0])) {
         chdir(cmd_arr[1]);
     }
-    fork() != 0 ? wait(NULL) : execvp(cmd_arr[0], cmd_arr);
+    execvp(cmd_arr[0], cmd_arr);
 }
 
+#if 0 
 static int get_env(char **cmd_arr, int cmd_len) {
     for (int i = 0; i < cmd_len; ++i) {
         if (cmd_arr[i][0] == '$') {
@@ -29,6 +33,18 @@ static int get_env(char **cmd_arr, int cmd_len) {
         }
     }
     return 0;
+}
+#endif
+
+static char **prep_cmd(const Cmd *cmd, const int i) {
+    char *cmd_str = cmd->sets[i];
+    char **cmd_arr = malloc(sizeof(char *) * CMD_NUM);
+
+    // split the command into an array
+    int cmd_frag_num = calc_cmd_frag(cmd_str);
+    init_str_arr(cmd_arr, cmd_frag_num, CMD_LEN);
+    split_cmd(cmd_str, cmd_arr);
+    return cmd_arr;
 }
 
 static void read_cmd(Cmd *cmd) {
@@ -64,34 +80,59 @@ static void read_cmd(Cmd *cmd) {
 
 static void exec_uni_cmd(const Cmd *cmd) {
     // split the command into an array
-    char *cmd_str = cmd->sets[0];
-    int cmd_frag_num = calc_cmd_frag(cmd_str);
-    char *cmd_arr[cmd_frag_num + 1];
-    split_cmd(cmd_str, cmd_arr);
-
-    // parse environment variables
-    if (get_env(cmd_arr, cmd_frag_num) == -1)
-        return;
-
-    // execute the command
+    char **cmd_arr = prep_cmd(cmd, 0);
     exec_cmd(cmd_arr);
 }
 
+static void pipeline(char **cmd1, char **cmd2) {
+    int fd[2];
+    pipe(fd);
+    if (fork() != 0) {
+        close(fd[0]);
+        close(STDOUT_FILENO);
+        dup(fd[1]);
+        close(fd[1]);
+        exec_cmd(cmd1);
+    } else {
+        close(fd[1]);
+        close(STDIN_FILENO);
+        dup(fd[0]);
+        close(fd[0]);
+        exec_cmd(cmd2);
+    }
+}
+
+static void redir_out(char **cmd1, char *const *file) {
+    int fd = open(file[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    close(STDOUT_FILENO);
+    dup(fd);
+    close(fd);
+    exec_cmd(cmd1);
+}
+
+static void redir_in(char **cmd1, char *const *file) {
+    int fd = open(file[0], O_RDONLY);
+    close(STDIN_FILENO);
+    dup(fd);
+    close(fd);
+    exec_cmd(cmd1);
+}
+
 static void exec_multi_cmd(const Cmd *cmd) {
-    /*int fd[2];*/
-    /*pipe(fd);*/
-    /*pid_t pid = fork();*/
-    /*if (pid == 0) {*/
-    /*dup2(fd[1], STDOUT_FILENO);*/
-    /*close(fd[0]);*/
-    /*close(fd[1]);*/
-    /*execvp(cmd->sets[0], cmd->sets);*/
-    /*} else {*/
-    /*dup2(fd[0], STDIN_FILENO);*/
-    /*close(fd[0]);*/
-    /*close(fd[1]);*/
-    /*execvp(cmd->sets[1], cmd->sets + 1);*/
-    /*}*/
+    for (int i = 0; i < cmd->total; ++i) {
+        // start pipeline and redirection
+        char **cmd1_arr = prep_cmd(cmd, i);
+        char **cmd2_arr = prep_cmd(cmd, i + 1);
+        if (cmd->redirect[i] == '|')
+            pipeline(cmd1_arr, cmd2_arr);
+
+        cmd->redirect[i] == '>' ? redir_out(cmd1_arr, cmd2_arr)
+                                : redir_in(cmd1_arr, cmd2_arr);
+
+        // clean up
+        free(cmd1_arr);
+        free(cmd2_arr);
+    }
 }
 
 void init_shell(Shell **self) {
