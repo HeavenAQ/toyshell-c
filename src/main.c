@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/_types/_pid_t.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -14,7 +14,7 @@ void shell_loop(Shell *sh) {
         Cmd *cmd = NULL;
         init_cmd(&cmd);
 
-        sh->prompt();
+        printf("h-sh> ");
         sh->read_cmd(cmd);
         fflush(stdin);
 
@@ -28,7 +28,7 @@ void shell_loop(Shell *sh) {
         fclose(fp);
 #endif
         if (cmd->is_background)
-            sh->exec_background(cmd);
+            fork() == 0 ? sh->exec_background(cmd) : NULL;
         else if (cmd->total == 1)
             fork() != 0 ? wait(NULL) : sh->exec_uni_cmd(cmd);
         else if (cmd->total > 1)

@@ -6,7 +6,6 @@
 #include "cmd.h"
 typedef struct Shell Shell;
 struct Shell {
-    void (*prompt)(void);
     void (*read_cmd)(Cmd *cmd);
     void (*exec_uni_cmd)(const Cmd *cmd);
     void (*exec_multi_cmd)(const Cmd *cmd);

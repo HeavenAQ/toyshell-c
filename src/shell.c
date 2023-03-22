@@ -144,27 +144,15 @@ static void exec_multi_cmd(const Cmd *cmd) {
         free(cmd2_arr);
     }
 }
-static void exec_background(const Cmd *cmd) {
-    pid_t pid = fork();
-    if (pid < 0) {
-        fprintf(stderr, "Failed to fork in %s", __FUNCTION__);
-        return;
-    } else if (pid != 0) {
-        return;
-    }
 
-    // make this a daemon process
-    int fd = open("/dev/null", O_RDWR);
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
-    dup2(fd, STDIN_FILENO);
-    dup2(fd, STDOUT_FILENO);
-    dup2(fd, STDERR_FILENO);
+static int daemon_num = 0;
+static void exec_background(const Cmd *cmd) {
+    printf("[%d]+ Running\t\t%s\n", ++daemon_num, cmd->sets[0]);
     if (cmd->total == 1)
         exec_uni_cmd(cmd);
     else if (cmd->total > 1)
         exec_multi_cmd(cmd);
+    exit(0);
 }
 
 static bool is_sh_exit(const Cmd *cmd) {
@@ -174,20 +162,11 @@ static bool is_sh_exit(const Cmd *cmd) {
     return false;
 }
 
-static void prompt() {
-    char *user = getenv("USER");
-    char *host = getenv("HOSTNAME");
-    char pwd[PATH_MAX];
-    getcwd(pwd, sizeof(pwd));
-    printf("%s@%s:%s > ", user, host, pwd);
-}
-
 void init_shell(Shell **self) {
     if (!(*self = (Shell *)malloc(sizeof(Shell)))) {
         fprintf(stderr, "Failed to allocate memory in %s", __FUNCTION__);
         return;
     }
-    (*self)->prompt = prompt;
     (*self)->read_cmd = read_cmd;
     (*self)->exec_uni_cmd = exec_uni_cmd;
     (*self)->exec_multi_cmd = exec_multi_cmd;
