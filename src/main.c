@@ -14,6 +14,7 @@ void shell_loop(Shell *sh) {
         Cmd *cmd = NULL;
         init_cmd(&cmd);
 
+        sh->prompt();
         sh->read_cmd(cmd);
         fflush(stdin);
 
@@ -21,15 +22,25 @@ void shell_loop(Shell *sh) {
         FILE *fp = fopen("debug.log", "a");
         fprintf(fp, "total: %d\n", cmd->total);
         fprintf(fp, "redirect: %s\n", cmd->redirect);
+        fprintf(fp, "is_background: %d\n", cmd->is_background);
         for (int i = 0; i < cmd->total; ++i)
-            fprintf(fp, "cmd string: %s", cmd->sets[i]);
+            fprintf(fp, "cmd string: %s\n", cmd->sets[i]);
         fclose(fp);
 #endif
-
-        if (cmd->total == 1)
+        if (cmd->is_background)
+            sh->exec_background(cmd);
+        else if (cmd->total == 1)
             fork() != 0 ? wait(NULL) : sh->exec_uni_cmd(cmd);
         else if (cmd->total > 1)
             fork() != 0 ? wait(NULL) : sh->exec_multi_cmd(cmd);
+
+        // exit if the command is "exit"
+        if (sh->is_sh_exit(cmd)) {
+            // clean up
+            free_cmd(&cmd);
+            cmd = NULL;
+            break;
+        }
 
         // clean up
         free_cmd(&cmd);

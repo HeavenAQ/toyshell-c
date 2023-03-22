@@ -27,5 +27,6 @@ clean:
 	rm -f $(TARGET)
 	rm -rf $(ELF_DIR)
 	rm -rf *.o
+	rm -rf *.dSYM
 
 .PHONY: all clean

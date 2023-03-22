@@ -16,6 +16,8 @@ void init_cmd(Cmd **cmd) {
 
     (*cmd)->sets = (char **)malloc(CMD_NUM * sizeof(char *));
     init_str_arr((*cmd)->sets, CMD_NUM, CMD_LEN);
+    (*cmd)->total = 0;
+    (*cmd)->is_background = false;
 }
 
 void free_cmd(Cmd **cmd) {

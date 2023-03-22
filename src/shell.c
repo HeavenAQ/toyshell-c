@@ -10,6 +10,7 @@
 #include "headers/cmd.h"
 #include "headers/shell.h"
 #include "headers/utils.h"
+#define PATH_MAX 1 KB
 
 static inline bool is_exit(const char *cmd) { return strcmp(cmd, "exit") == 0; }
 static inline bool is_cd(const char *cmd) { return strcmp(cmd, "cd") == 0; }
@@ -17,6 +18,7 @@ static inline void exec_cmd(char *const *cmd_arr) {
     is_exit(cmd_arr[0]) ? exit(0) : NULL;
     if (is_cd(cmd_arr[0])) {
         chdir(cmd_arr[1]);
+        return;
     }
     execvp(cmd_arr[0], cmd_arr);
 }
@@ -48,8 +50,6 @@ static char **prep_cmd(const Cmd *cmd, const int i) {
 }
 
 static void read_cmd(Cmd *cmd) {
-    printf("$ ");
-
     char c;
     int cur_num = 0, cur_len = 0;
     int max_cmd_num = CMD_NUM, max_cmd_len = CMD_LEN;
@@ -72,9 +72,19 @@ static void read_cmd(Cmd *cmd) {
     }
 
     // trim unwanted prefix and suffix
-    cmd->total = strlen(cmd->redirect) + 1;
+    int redir_len = strlen(cmd->redirect);
+    cmd->total = redir_len + 1;
     for (int k = 0; k < cmd->total; ++k) {
         cmd->sets[k] = trim(cmd->sets[k]);
+    }
+
+    // check if the command is a daemon
+    if (cmd->sets[cmd->total][0] == '\0' &&
+        cmd->redirect[redir_len - 1] == '&') {
+
+        cmd->is_background = true;
+        cmd->total -= 1;
+        cmd->redirect[cmd->total - 1] = '\0';
     }
 }
 
@@ -90,32 +100,32 @@ static void pipeline(char **cmd1, char **cmd2) {
     if (fork() != 0) {
         close(fd[0]);
         close(STDOUT_FILENO);
-        dup(fd[1]);
+        dup2(fd[1], STDOUT_FILENO);
         close(fd[1]);
         exec_cmd(cmd1);
     } else {
         close(fd[1]);
         close(STDIN_FILENO);
-        dup(fd[0]);
+        dup2(fd[0], STDIN_FILENO);
         close(fd[0]);
         exec_cmd(cmd2);
     }
 }
 
-static void redir_out(char **cmd1, char *const *file) {
+static void redir_out(char **cmd_arr, char *const *file) {
     int fd = open(file[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
     close(STDOUT_FILENO);
-    dup(fd);
+    dup2(fd, STDOUT_FILENO);
     close(fd);
-    exec_cmd(cmd1);
+    exec_cmd(cmd_arr);
 }
 
-static void redir_in(char **cmd1, char *const *file) {
+static void redir_in(char **cmd_arr, char *const *file) {
     int fd = open(file[0], O_RDONLY);
     close(STDIN_FILENO);
-    dup(fd);
+    dup2(fd, STDIN_FILENO);
     close(fd);
-    exec_cmd(cmd1);
+    exec_cmd(cmd_arr);
 }
 
 static void exec_multi_cmd(const Cmd *cmd) {
@@ -134,13 +144,53 @@ static void exec_multi_cmd(const Cmd *cmd) {
         free(cmd2_arr);
     }
 }
+static void exec_background(const Cmd *cmd) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "Failed to fork in %s", __FUNCTION__);
+        return;
+    } else if (pid != 0) {
+        return;
+    }
+
+    // make this a daemon process
+    int fd = open("/dev/null", O_RDWR);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+    dup2(fd, STDIN_FILENO);
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+    if (cmd->total == 1)
+        exec_uni_cmd(cmd);
+    else if (cmd->total > 1)
+        exec_multi_cmd(cmd);
+}
+
+static bool is_sh_exit(const Cmd *cmd) {
+    for (int i = 0; i < cmd->total; ++i)
+        if (is_exit(cmd->sets[i]))
+            return true;
+    return false;
+}
+
+static void prompt() {
+    char *user = getenv("USER");
+    char *host = getenv("HOSTNAME");
+    char pwd[PATH_MAX];
+    getcwd(pwd, sizeof(pwd));
+    printf("%s@%s:%s > ", user, host, pwd);
+}
 
 void init_shell(Shell **self) {
     if (!(*self = (Shell *)malloc(sizeof(Shell)))) {
         fprintf(stderr, "Failed to allocate memory in %s", __FUNCTION__);
         return;
     }
+    (*self)->prompt = prompt;
     (*self)->read_cmd = read_cmd;
     (*self)->exec_uni_cmd = exec_uni_cmd;
     (*self)->exec_multi_cmd = exec_multi_cmd;
+    (*self)->exec_background = exec_background;
+    (*self)->is_sh_exit = is_sh_exit;
 }

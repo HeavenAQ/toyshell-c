@@ -10,6 +10,7 @@ struct Cmd {
     char **sets;
     char *redirect;
     int total;
+    bool is_background;
 };
 
 void init_cmd(Cmd **cmd);
