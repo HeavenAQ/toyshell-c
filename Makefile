@@ -28,5 +28,6 @@ clean:
 	rm -rf $(ELF_DIR)
 	rm -rf *.o
 	rm -rf *.dSYM
+	rm -rf debug.log tmp
 
-.PHONY: all clean
+.PHONY: all clean debug

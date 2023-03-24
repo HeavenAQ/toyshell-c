@@ -16,7 +16,6 @@ void shell_loop(Shell *sh) {
 
         printf("h-sh> ");
         sh->read_cmd(cmd);
-        fflush(stdin);
 
 #ifdef DEBUG_READ_CMD
         FILE *fp = fopen("debug.log", "a");
