@@ -4,7 +4,7 @@
 
 1. Install VM
     - I used ubuntu server iso (I don't need GUI)
-    - allocate enough disk size (at least 30GB aside from LVM)
+    - allocate enough disk size (at least 30GB aside from default os size and kernel size)
 2. `sudo -s` 
     - with root permission
 3. install dependencies
