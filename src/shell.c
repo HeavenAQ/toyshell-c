@@ -67,8 +67,7 @@ static void read_cmd(Cmd *cmd)
             cmd->redirect[cur_num] = c;
             ++cur_num;
             cur_len = 0;
-        }
-        else {
+        } else {
             cmd->sets[cur_num][cur_len] = c;
             ++cur_len;
         }
@@ -107,8 +106,7 @@ static void pipeline(char *const *cmd1)
         dup2(fd[1], STDOUT_FILENO);
         close(fd[1]);
         exec_cmd(cmd1);
-    }
-    else {
+    } else {
         close(fd[1]);
         dup2(fd[0], STDIN_FILENO);
         close(fd[0]);
@@ -135,8 +133,7 @@ static void exec_multi_cmd(const Cmd *cmd)
         char **cmd1_arr = prep_cmd(cmd, i);
         if (cmd->redirect[i] == '|') {
             pipeline(cmd1_arr);
-        }
-        else if (cmd->redirect[i] == '>' || cmd->redirect[i] == '<') {
+        } else if (cmd->redirect[i] == '>' || cmd->redirect[i] == '<') {
             char *filename = cmd->sets[i + 1];
             cmd->redirect[i] == '>' ? redir(cmd1_arr, filename, STDOUT_FILENO)
                                     : redir(cmd1_arr, filename, STDIN_FILENO);
