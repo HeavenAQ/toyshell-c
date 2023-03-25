@@ -5,15 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool is_redir_sign(char c) {
+bool is_redir_sign(char c)
+{
     return c == '|' || c == '<' || c == '>' || c == '&';
 }
 
-bool is_whitespace(char c) {
+bool is_whitespace(char c)
+{
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-char *trim(char *str) {
+char *trim(char *str)
+{
     char *end = str + strlen(str);
     while (is_whitespace(*str)) {
         ++str;
@@ -25,7 +28,8 @@ char *trim(char *str) {
     return str;
 }
 
-int calc_cmd_frag(const char *ptr) {
+int calc_cmd_frag(const char *ptr)
+{
     char c;
     int i = 1;
     bool pre_space = false;
@@ -41,20 +45,23 @@ int calc_cmd_frag(const char *ptr) {
     return i;
 }
 
-void init_str_arr(char **ptr, const int arr_len, const int str_len) {
+void init_str_arr(char **ptr, const int arr_len, const int str_len)
+{
     for (int i = 0; i < arr_len; i++) {
         ptr[i] = (char *)malloc(str_len);
         memset(ptr[i], '\0', str_len);
     }
 }
 
-void free_str_arr(char **ptr, const int arr_len) {
+void free_str_arr(char **ptr, const int arr_len)
+{
     for (int i = 0; i < arr_len; i++)
         free(ptr[i]);
     free(ptr);
 }
 
-void split_cmd(char *cmd_str, char **arr) {
+void split_cmd(char *cmd_str, char **arr)
+{
     int i = 0;
     char *cmd_frag = strtok(cmd_str, " ");
 
@@ -76,7 +83,8 @@ void split_cmd(char *cmd_str, char **arr) {
 }
 
 int resize_cmd_len(const int cur_num, const int cur_len, const Cmd *cmd,
-                   int max_cmd_len) {
+                   int max_cmd_len)
+{
     char *cur_end = cmd->sets[cur_num] + cur_len;
     max_cmd_len += CMD_LEN;
     cmd->sets[cur_num] = realloc(cmd->sets[cur_num], max_cmd_len);
@@ -89,7 +97,8 @@ int resize_cmd_len(const int cur_num, const int cur_len, const Cmd *cmd,
     return max_cmd_len;
 }
 
-int resize_cmd_set(const int cur_num, Cmd *cmd, int max_cmd_len) {
+int resize_cmd_set(const int cur_num, Cmd *cmd, int max_cmd_len)
+{
     // resize redirect symbol array
     char *cur_end = cmd->redirect + cur_num;
     max_cmd_len += CMD_NUM;

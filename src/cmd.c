@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-void init_cmd(Cmd **cmd) {
+void init_cmd(Cmd **cmd)
+{
     if (!(*cmd = (Cmd *)malloc(sizeof(Cmd)))) {
         fprintf(stderr, "Failed to allocate memory in %s", __FUNCTION__);
         return;
@@ -20,7 +21,8 @@ void init_cmd(Cmd **cmd) {
     (*cmd)->is_background = false;
 }
 
-void free_cmd(Cmd **cmd) {
+void free_cmd(Cmd **cmd)
+{
     free((*cmd)->redirect);
     free((*cmd)->sets);
     free(*cmd);

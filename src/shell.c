@@ -14,11 +14,11 @@
 
 static inline bool is_exit(const char *cmd) { return strcmp(cmd, "exit") == 0; }
 static inline bool is_cd(const char *cmd) { return strcmp(cmd, "cd") == 0; }
-static inline void exec_cmd(char *const *cmd_arr) {
+static inline void exec_cmd(char *const *cmd_arr)
+{
     is_exit(cmd_arr[0]) ? exit(0) : NULL;
     if (is_cd(cmd_arr[0])) {
         chdir(cmd_arr[1]);
-        return;
     }
     execvp(cmd_arr[0], cmd_arr);
 }
@@ -38,7 +38,8 @@ static int get_env(char **cmd_arr, int cmd_len) {
 }
 #endif
 
-static char **prep_cmd(const Cmd *cmd, const int i) {
+static char **prep_cmd(const Cmd *cmd, const int i)
+{
     char *cmd_str = cmd->sets[i];
     char **cmd_arr = malloc(sizeof(char *) * CMD_NUM);
 
@@ -49,7 +50,8 @@ static char **prep_cmd(const Cmd *cmd, const int i) {
     return cmd_arr;
 }
 
-static void read_cmd(Cmd *cmd) {
+static void read_cmd(Cmd *cmd)
+{
     char c;
     int cur_num = 0, cur_len = 0;
     int max_cmd_num = CMD_NUM, max_cmd_len = CMD_LEN;
@@ -65,7 +67,8 @@ static void read_cmd(Cmd *cmd) {
             cmd->redirect[cur_num] = c;
             ++cur_num;
             cur_len = 0;
-        } else {
+        }
+        else {
             cmd->sets[cur_num][cur_len] = c;
             ++cur_len;
         }
@@ -88,65 +91,67 @@ static void read_cmd(Cmd *cmd) {
     }
 }
 
-static void exec_uni_cmd(const Cmd *cmd) {
+static void exec_uni_cmd(const Cmd *cmd)
+{
     // split the command into an array
     char **cmd_arr = prep_cmd(cmd, 0);
     exec_cmd(cmd_arr);
 }
 
-static void pipeline(char **cmd1, char **cmd2) {
+static void pipeline(char *const *cmd1)
+{
     int fd[2];
     pipe(fd);
     if (fork() != 0) {
         close(fd[0]);
-        close(STDOUT_FILENO);
         dup2(fd[1], STDOUT_FILENO);
         close(fd[1]);
         exec_cmd(cmd1);
-    } else {
+    }
+    else {
         close(fd[1]);
-        close(STDIN_FILENO);
         dup2(fd[0], STDIN_FILENO);
         close(fd[0]);
-        exec_cmd(cmd2);
     }
 }
 
-static void redir_out(char **cmd_arr, char *const *file) {
-    int fd = open(file[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    close(STDOUT_FILENO);
-    dup2(fd, STDOUT_FILENO);
+static void redir(char **cmd_arr, const char *file, const int std_fd)
+{
+    const int permission =
+        std_fd == STDOUT_FILENO ? (O_WRONLY | O_CREAT | O_TRUNC) : O_RDONLY;
+
+    int fd = open(file, permission, 0644);
+    close(std_fd);
+    dup2(fd, std_fd);
     close(fd);
     exec_cmd(cmd_arr);
 }
 
-static void redir_in(char **cmd_arr, char *const *file) {
-    int fd = open(file[0], O_RDONLY);
-    close(STDIN_FILENO);
-    dup2(fd, STDIN_FILENO);
-    close(fd);
-    exec_cmd(cmd_arr);
-}
-
-static void exec_multi_cmd(const Cmd *cmd) {
-    for (int i = 0; i < cmd->total; ++i) {
+static void exec_multi_cmd(const Cmd *cmd)
+{
+    int total_redir = cmd->total - 1;
+    for (int i = 0; i < total_redir; ++i) {
         // start pipeline and redirection
         char **cmd1_arr = prep_cmd(cmd, i);
-        char **cmd2_arr = prep_cmd(cmd, i + 1);
-        if (cmd->redirect[i] == '|')
-            pipeline(cmd1_arr, cmd2_arr);
-
-        cmd->redirect[i] == '>' ? redir_out(cmd1_arr, cmd2_arr)
-                                : redir_in(cmd1_arr, cmd2_arr);
-
-        // clean up
-        free(cmd1_arr);
-        free(cmd2_arr);
+        if (cmd->redirect[i] == '|') {
+            pipeline(cmd1_arr);
+        }
+        else if (cmd->redirect[i] == '>' || cmd->redirect[i] == '<') {
+            char *filename = cmd->sets[i + 1];
+            cmd->redirect[i] == '>' ? redir(cmd1_arr, filename, STDOUT_FILENO)
+                                    : redir(cmd1_arr, filename, STDIN_FILENO);
+            ++i;
+        }
+    }
+    if (cmd->redirect[total_redir - 1] == '|') {
+        char **last_cmd_arr = prep_cmd(cmd, total_redir);
+        exec_cmd(last_cmd_arr);
     }
 }
 
 static int daemon_num = 0;
-static void exec_background(const Cmd *cmd) {
+static void exec_background(const Cmd *cmd)
+{
     printf("[%d]+ Running\t\t%s\n", ++daemon_num, cmd->sets[0]);
     if (cmd->total == 1)
         exec_uni_cmd(cmd);
@@ -155,14 +160,16 @@ static void exec_background(const Cmd *cmd) {
     exit(0);
 }
 
-static bool is_sh_exit(const Cmd *cmd) {
+static bool is_sh_exit(const Cmd *cmd)
+{
     for (int i = 0; i < cmd->total; ++i)
         if (is_exit(cmd->sets[i]))
             return true;
     return false;
 }
 
-void init_shell(Shell **self) {
+void init_shell(Shell **self)
+{
     if (!(*self = (Shell *)malloc(sizeof(Shell)))) {
         fprintf(stderr, "Failed to allocate memory in %s", __FUNCTION__);
         return;

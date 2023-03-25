@@ -30,4 +30,4 @@ clean:
 	rm -rf *.dSYM
 	rm -rf debug.log tmp
 
-.PHONY: all clean debug
+.PHONY: all clean
